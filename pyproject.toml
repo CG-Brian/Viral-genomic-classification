@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "viral-read-classifier"
+version = "0.1.0"
+description = "Restored inference demo for a 2022 viral genomic read classifier"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "gradio>=5,<7",
+    "numpy>=2,<3",
+    "plotly>=6,<7",
+    "scikit-learn>=1.5,<2",
+    "tokenizers>=0.15,<1",
+    "torch>=2.2,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

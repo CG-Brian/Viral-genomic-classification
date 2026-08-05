@@ -1,9 +1,1 @@
--f https://download.pytorch.org/whl/torch_stable.html
-gunicorn
-dash
-plotly
-pandas
-numpy
-torch==1.11.0+cpu
-tokenizers
-scikit-learn
+-e .
