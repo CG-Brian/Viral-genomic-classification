@@ -12,10 +12,14 @@ reads to one of six respiratory-pathogen classes.
 
 ## Problem
 
-Short-read metagenomic sequencing pipelines need to quickly triage reads by
-likely origin. This project frames that as single-read, closed-set
-classification: given one short nucleotide read, assign it to one of six
-known classes. It does not attempt open-set detection of novel pathogens,
+High-throughput sequencing produces large volumes of short reads rather than
+whole assembled genomes. Classical read classification (e.g. Kraken2)
+compares fixed-length k-mers against large reference databases, which is
+memory-hungry and forces a single k-mer length onto features that vary in
+size. This project instead frames read classification as an NLP-style
+problem: given one short nucleotide read, tokenize it with a learned,
+variable-length vocabulary and classify it into one of six known respiratory
+pathogen classes. It does not attempt open-set detection of novel pathogens,
 assembly, or alignment-based identification.
 
 ## Data source
@@ -27,8 +31,13 @@ Training used the synthetic reads published with PACIFIC:
 > co-infecting RNA viruses. *Scientific Reports, 11*, 3209.
 > https://doi.org/10.1038/s41598-021-82043-4
 
-Reads are 150 nucleotides long in the source data; the deployed model
-accepts 20–1,000 nucleotide DNA-formatted (`A`/`C`/`G`/`T`) reads.
+These are ART-simulated short reads (150 nt in the source data; the deployed
+model accepts 20–1,000 nucleotide DNA-formatted `A`/`C`/`G`/`T` reads),
+substantially imbalanced across classes — from 532,881 reads
+(Metapneumovirus) to 3,531,439 reads (Human, the control class) — which the
+training procedure addresses with inverse-frequency class weighting in the
+loss. See [`training/README.md`](training/README.md) for the full per-class
+breakdown and training methodology.
 
 ## Target classes
 
@@ -77,20 +86,41 @@ Because the embedding is frozen when the classifier is trained, the
 representation the LSTM consumes is fixed evidence about subsequence
 co-occurrence in the reads, not something the classifier itself shapes — closer
 in spirit to using pretrained word embeddings for a downstream NLP model than
-to a jointly learned embedding+classifier.
+to a jointly learned embedding+classifier. This matches what was actually
+deployed: the production weight file was named to record `embedding
+freeze=True`, and the bundled PCA/reference-embedding artifacts were derived
+from that same file's embedding layer. See
+[`training/README.md`](training/README.md) for the full evidence trail and
+for the reference implementation of each stage above.
 
 ## Evaluation results
 
-The training run reported 99.5% accuracy on a random read-level held-out
-split of the synthetic PACIFIC-derived reads:
+The project ran three embedding configurations and reported these weighted
+F1 scores on a held-out split:
+
+| Embedding configuration | Weighted F1 |
+|---|---:|
+| CBOW-pretrained, **frozen** — the configuration actually deployed here | ≈ 0.90 |
+| CBOW-pretrained, fine-tuned (unfrozen) | ≈ 0.74 (overfit) |
+| No pretraining — embedding trained jointly with the LSTM from scratch | > 0.995 |
+
+The often-quoted **99.5% accuracy** figure belongs to the *no-pretraining*
+row above, per the original report's own results table — not the
+frozen-CBOW configuration this repository actually ships. The same report's
+discussion section contradicts its results table on this point (crediting
+CBOW pretraining for the >0.99 score), and no per-run logs survive to
+settle it. Rather than pick a side, this README states both facts: the
+deployed model is the frozen-CBOW configuration, and 99.5%/F1>0.995 is the
+best number the source project reported, for a different configuration. The
+plots below are the original run's training curve and per-class report,
+included as evidence for these numbers rather than as a guarantee of the
+current artifacts' exact performance:
 
 | | |
 |---|---|
 | ![Training accuracy over epochs](docs/evaluation/training_scores.png) | ![Per-class classification report](docs/evaluation/classification_report.png) |
 
-This run has not been reproduced in this repository; the numbers above are
-the historical result, included as evidence for the reported score rather
-than as a guarantee of current behavior.
+None of these runs have been reproduced in this repository.
 
 ## Limitations
 
@@ -108,6 +138,10 @@ than as a guarantee of current behavior.
 - **PCA distance is not phylogenetic distance.** The 3D projection reflects
   proximity in one learned embedding space, not evolutionary or taxonomic
   relatedness.
+- **Unresolved accuracy attribution.** As detailed above, the source
+  project's own report disagrees with itself about which embedding
+  configuration produced its best score; this repository reports the
+  discrepancy rather than resolving it.
 
 ## Run the demo
 
@@ -144,6 +178,7 @@ and the Gradio callback.
 ├── artifacts/                # Tokenizer, classifier weights, labels, PCA, reference embeddings
 ├── docs/evaluation/           # Training/evaluation plots referenced above
 ├── src/viral_classifier/      # Validation, model, predictor, visualization
+├── training/                  # Reference training pipeline (tokenizer, CBOW, LSTM, PCA analysis)
 └── tests/                     # Unit and application smoke tests
 ```
 
