@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "viral-read-classifier"
 version = "0.1.0"
-description = "BPE-tokenized, LSTM-based classifier for short viral genomic reads"
+description = "NLP-inspired viral genomic read classification using BPE tokenization, pretrained nucleotide-subsequence embeddings, and an LSTM classifier"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 dependencies = [

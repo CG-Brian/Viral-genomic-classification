@@ -1,13 +1,13 @@
 # Training methodology
 
-This documents how `artifacts/` was produced and provides a reference
-implementation of each stage. **It is not a one-command reproduction**: the
-PACIFIC-derived read corpus (~8M reads, not distributed with this
-repository) and the original Colab/Kaggle GPU environment are both required
-to actually run it end to end. Evidence for every claim below is either the
-original project report or the original notebooks/code (recovered from git
-history); where they disagree, that is stated explicitly rather than
-resolved by guessing.
+This is a **reference training implementation**: it documents and
+implements how `artifacts/` was produced, stage by stage. **It is not a
+one-command reproduction pipeline** — the PACIFIC-derived read corpus (~8M
+reads) is not distributed with this repository, so each module below can be
+run against a locally prepared copy of that data, but not against this repo
+alone. Evidence for every methodological claim below is either the original
+project report or the original training code; where they disagree, that is
+stated explicitly rather than resolved by guessing.
 
 ## Dataset
 
@@ -29,12 +29,11 @@ imbalance in the classifier's loss, per the original report.
 
 ## 1. BPE tokenizer
 
-Trained with Hugging Face `tokenizers` (`models.BPE`, vocab size 24,000) over
-the full read corpus, character-initialized on `A`/`C`/`G`/`T`. This is
-`artifacts/tokenizer.json`. Not reproduced as a module here — the recipe is
-~10 lines against `tokenizers.trainers.BpeTrainer` and doesn't warrant a
-separate file; see the original notebook preserved in git history at
-`git show 3c923fd:archive/2022/notebooks/01_tokenizer_training.ipynb`.
+`train_tokenizer.py`. A Hugging Face `tokenizers` BPE model (vocab size
+24,000) trained directly on the nucleotide read corpus — this is the
+methodology behind `artifacts/tokenizer.json`. Run as
+`python -m training.train_tokenizer <reads_dir> <output.json>` given a
+locally prepared copy of the read corpus.
 
 ## 2. CBOW embedding pretraining
 

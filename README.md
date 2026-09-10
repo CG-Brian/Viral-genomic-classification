@@ -6,7 +6,7 @@ tokenization and a learned embedding space — originally pretrained with a
 CBOW-style objective — to feed an LSTM classifier that assigns short DNA
 reads to one of six respiratory-pathogen classes.
 
-Click for a paper-style report: https://serious-cord-d5d.notion.site/Virus-Classification-Project-Report-f89b1f7d12a0401c8c1fce2a10117d83
+Full project write-up: [Virus Classification Project Report](https://serious-cord-d5d.notion.site/Virus-Classification-Project-Report-f89b1f7d12a0401c8c1fce2a10117d83)
 
 ## Problem
 
@@ -82,43 +82,30 @@ flowchart LR
 
 Because the embedding is frozen when the classifier is trained, the
 representation the LSTM consumes is fixed evidence about subsequence
-co-occurrence in the reads, not something the classifier itself shapes — closer
-in spirit to using pretrained word embeddings for a downstream NLP model than
-to a jointly learned embedding+classifier. This matches what was actually
-deployed: the production weight file was named to record `embedding
-freeze=True`, and the bundled PCA/reference-embedding artifacts were derived
-from that same file's embedding layer. See
-[`training/README.md`](training/README.md) for the full evidence trail and
-for the reference implementation of each stage above.
+co-occurrence in the reads, not something the classifier itself shapes —
+closer in spirit to using pretrained word embeddings for a downstream NLP
+model than to a jointly learned embedding+classifier. This is the
+configuration actually shipped in `artifacts/`; see
+[`training/README.md`](training/README.md) for the supporting evidence and
+the reference implementation of each pipeline stage.
 
 ## Evaluation results
 
-The project ran three embedding configurations and reported these weighted
-F1 scores on a held-out split:
-
-| Embedding configuration | Weighted F1 |
-|---|---:|
-| CBOW-pretrained, **frozen** — the configuration actually deployed here | ≈ 0.90 |
-| CBOW-pretrained, fine-tuned (unfrozen) | ≈ 0.74 (overfit) |
-| No pretraining — embedding trained jointly with the LSTM from scratch | > 0.995 |
-
-The often-quoted **99.5% accuracy** figure belongs to the *no-pretraining*
-row above, per the original report's own results table — not the
-frozen-CBOW configuration this repository actually ships. The same report's
-discussion section contradicts its results table on this point (crediting
-CBOW pretraining for the >0.99 score), and no per-run logs survive to
-settle it. Rather than pick a side, this README states both facts: the
-deployed model is the frozen-CBOW configuration, and 99.5%/F1>0.995 is the
-best number the source project reported, for a different configuration. The
-plots below are the original run's training curve and per-class report,
-included as evidence for these numbers rather than as a guarantee of the
-current artifacts' exact performance:
+The shipped model (`artifacts/classifier.pth`) is the **frozen
+pretrained-embedding** configuration. The original report's results table
+attributes its best score — F1 > 0.995, the often-quoted **99.5% accuracy**
+— to a *different* configuration (embeddings trained from scratch, no CBOW
+pretraining), and the report's own discussion section contradicts that
+table. This repository does not resolve that inconsistency; see
+[`training/README.md`](training/README.md#what-was-actually-shipped-and-the-accuracy-discrepancy)
+for the full evidence trail. The plots below are the original run's
+training curve and per-class report, included as evidence for the reported
+numbers rather than as a guarantee of the current artifacts' exact
+performance — none of these runs have been reproduced in this repository:
 
 | | |
 |---|---|
 | ![Training accuracy over epochs](docs/evaluation/training_scores.png) | ![Per-class classification report](docs/evaluation/classification_report.png) |
-
-None of these runs have been reproduced in this repository.
 
 ## Limitations
 
