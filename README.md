@@ -6,9 +6,7 @@ tokenization and a learned embedding space — originally pretrained with a
 CBOW-style objective — to feed an LSTM classifier that assigns short DNA
 reads to one of six respiratory-pathogen classes.
 
-> **Research demonstration only. This application is not a clinical
-> diagnostic tool.** Model scores classify individual reads and are not
-> probabilities that a patient has a particular infection.
+Click for a paper-style report: https://serious-cord-d5d.notion.site/Virus-Classification-Project-Report-f89b1f7d12a0401c8c1fce2a10117d83
 
 ## Problem
 
