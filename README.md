@@ -1,42 +1,36 @@
 # Viral Genomic Read Classifier
 
-An inference-only restoration of a Bio AI project originally developed in
-2022. The project applies NLP-style representation learning to short genomic
-reads: a BPE tokenizer converts nucleotide sequences into variable-length
-tokens, and an LSTM assigns each read to one of six classes.
+Can NLP-style representation learning on nucleotide subsequences classify
+short viral genomic reads? This project applies byte-pair-encoding (BPE)
+tokenization and a learned embedding space — originally pretrained with a
+CBOW-style objective — to feed an LSTM classifier that assigns short DNA
+reads to one of six respiratory-pathogen classes.
 
-The original Dash/Heroku demo has been replaced with a tested Gradio interface.
-The 2022 notebooks and saved outputs remain available as an explicit historical
-archive.
+> **Research demonstration only. This application is not a clinical
+> diagnostic tool.** Model scores classify individual reads and are not
+> probabilities that a patient has a particular infection.
 
-> **Research demonstration only. This application is not a clinical diagnostic
-> tool.** Model scores classify individual reads and are not probabilities that
-> a patient has a particular infection.
+## Problem
 
-## What the demo shows
+Short-read metagenomic sequencing pipelines need to quickly triage reads by
+likely origin. This project frames that as single-read, closed-set
+classification: given one short nucleotide read, assign it to one of six
+known classes. It does not attempt open-set detection of novel pathogens,
+assembly, or alignment-based identification.
 
-- Six-class model output and the highest-scoring read class
-- BPE tokens produced from the submitted nucleotide sequence
-- A 3D PCA projection of the learned embedding alongside sampled references
-- Clear validation and interpretation boundaries
+## Data source
 
-The maintained application accepts DNA-formatted reads containing `A`, `C`,
-`G`, and `T`, from 20 through 1,000 nucleotides. The synthetic reads used by the
-original work were 150 nucleotides long.
+Training used the synthetic reads published with PACIFIC:
 
-## Model flow
+> Acera Mateos, P., Balboa, R. F., Easteal, S., Eyras, E., & Patel, H. R.
+> (2021). PACIFIC: a lightweight deep-learning classifier of SARS-CoV-2 and
+> co-infecting RNA viruses. *Scientific Reports, 11*, 3209.
+> https://doi.org/10.1038/s41598-021-82043-4
 
-```mermaid
-flowchart LR
-    A["DNA-formatted read"] --> B["BPE tokenizer<br/>24,000-token vocabulary"]
-    B --> C["256-dimensional embedding"]
-    C --> D["One-layer LSTM<br/>512 hidden units"]
-    D --> E["Six-class output"]
-    C --> F["Summed token embedding"]
-    F --> G["Historical 3D PCA projection"]
-```
+Reads are 150 nucleotides long in the source data; the deployed model
+accepts 20–1,000 nucleotide DNA-formatted (`A`/`C`/`G`/`T`) reads.
 
-The classes follow the source PACIFIC task:
+## Target classes
 
 1. Coronaviridae other than SARS-CoV-2
 2. Human transcriptome
@@ -45,7 +39,77 @@ The classes follow the source PACIFIC task:
 5. Rhinovirus
 6. SARS-CoV-2
 
-## Run locally
+## Method
+
+The pipeline has two representation-learning stages before classification,
+not a single end-to-end BPE→LSTM model:
+
+```mermaid
+flowchart LR
+    A["Raw DNA read"] --> B["Validation &<br/>normalization"]
+    B --> C["BPE tokenizer<br/>24,000-token vocabulary"]
+    C --> D["256-dim token embedding<br/>(CBOW-pretrained, frozen)"]
+    D --> E["1-layer LSTM<br/>512 hidden units"]
+    E --> F["Linear + softmax<br/>six-class output"]
+    D --> G["Summed token embedding"]
+    G --> H["PCA projection (3D)"]
+```
+
+1. **Tokenization.** A BPE tokenizer is trained on the nucleotide corpus,
+   producing a 24,000-token vocabulary of variable-length subsequences
+   rather than fixed k-mers.
+2. **Embedding pretraining.** Token embeddings (256-dim) are pretrained with
+   a CBOW-style objective: each token is predicted from the sum of its
+   neighboring tokens' embeddings within a window. This is unsupervised —
+   it uses no class labels.
+3. **Classification.** An LSTM (1 layer, 512 hidden units) is trained on the
+   six-class task on top of the pretrained embedding, which is **frozen**
+   during this stage (the deployed weight file's name records this
+   configuration — embedding freeze=True). The last timestep's hidden state
+   is passed through a linear layer to six logits.
+4. **Visualization (optional, decoupled from classification).** The token
+   embeddings for a read are summed and projected into 3D with a
+   pre-fit PCA transform, alongside a sample of reference reads' embeddings,
+   to give a qualitative view of the learned representation. This path does
+   not affect the predicted class or score.
+
+Because the embedding is frozen when the classifier is trained, the
+representation the LSTM consumes is fixed evidence about subsequence
+co-occurrence in the reads, not something the classifier itself shapes — closer
+in spirit to using pretrained word embeddings for a downstream NLP model than
+to a jointly learned embedding+classifier.
+
+## Evaluation results
+
+The training run reported 99.5% accuracy on a random read-level held-out
+split of the synthetic PACIFIC-derived reads:
+
+| | |
+|---|---|
+| ![Training accuracy over epochs](docs/evaluation/training_scores.png) | ![Per-class classification report](docs/evaluation/classification_report.png) |
+
+This run has not been reproduced in this repository; the numbers above are
+the historical result, included as evidence for the reported score rather
+than as a guarantee of current behavior.
+
+## Limitations
+
+- **Read-level split.** The held-out split was performed at the read level,
+  not by source genome or accession, so it does not demonstrate
+  generalization to unseen genomes.
+- **Closed-set only.** The classifier assumes every input belongs to one of
+  the six trained classes; it cannot flag a genuinely novel virus.
+- **Synthetic-to-real domain shift is untested.** Training and evaluation
+  both used synthetic PACIFIC-derived reads; performance on real sequencer
+  output is unknown.
+- **Softmax scores are not clinical probabilities.** They are relative
+  class scores for a single 150-nt-scale read, not calibrated,
+  patient-level probabilities of infection.
+- **PCA distance is not phylogenetic distance.** The 3D projection reflects
+  proximity in one learned embedding space, not evolutionary or taxonomic
+  relatedness.
+
+## Run the demo
 
 Python 3.10–3.13 is supported.
 
@@ -56,82 +120,33 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-Open the local URL printed by Gradio. No training dataset is required for the
-inference demo; the required historical artifacts are included in the
-repository.
+Open the local URL printed by Gradio and submit a DNA-formatted read
+(`A`/`C`/`G`/`T`, 20–1,000 nucleotides). All artifacts needed for inference
+(tokenizer, weights, labels, PCA transform, reference embeddings) are
+included in `artifacts/`; no dataset or training step is required.
 
 ## Run tests
-
-Install the development dependency and execute the suite:
 
 ```bash
 python -m pip install 'pytest>=8,<10'
 python -m pytest -v
 ```
 
-The tests cover nucleotide validation, artifact loading, deterministic model
-output, probability invariants, PCA projection, Plotly figures, and Gradio
-callback behavior.
+Tests cover sequence validation, artifact loading, deterministic model
+output, probability invariants, PCA projection, Plotly figure construction,
+and the Gradio callback.
 
-## Repository layout
+## Repository structure
 
 ```text
 .
 ├── app.py                    # Gradio entry point
-├── artifacts/                # Runtime tokenizer, weights, labels, and PCA data
-├── src/viral_classifier/     # Maintained model, prediction, and plotting code
-├── tests/                    # Unit and application smoke tests
-├── archive/2022/             # Original notebooks, Dash app, code, and results
-└── docs/superpowers/         # Restoration design and implementation plan
+├── artifacts/                # Tokenizer, classifier weights, labels, PCA, reference embeddings
+├── docs/evaluation/           # Training/evaluation plots referenced above
+├── src/viral_classifier/      # Validation, model, predictor, visualization
+└── tests/                     # Unit and application smoke tests
 ```
 
-The application resolves artifacts relative to the repository, so inference
-does not depend on the shell's current working directory. The model and
-reference projection are loaded once per application process.
-
-## Artifact provenance
-
-The canonical classifier is the state dictionary referenced by the final 2022
-Dash application (`sgrnn_emb_ftrue.pth`, now `artifacts/classifier.pth`). The
-alternative `model.pth` is preserved in `archive/2022/artifacts/`. Both match a
-24,000 × 256 embedding, a one-layer 512-unit LSTM, and six output classes.
-
-The historical PCA object was serialized with scikit-learn 1.0.2. To avoid
-depending on an incompatible estimator method, the maintained predictor reads
-its saved `mean_` and `components_` arrays and applies the equivalent linear
-projection directly.
-
-## Historical evaluation and limitations
-
-The original 2022 experiment reported 99.5% accuracy on a random held-out split
-of synthetic PACIFIC-derived reads. This repository does not treat that score
-as evidence of clinical performance, novel-virus detection, or generalization
-to unseen genome assemblies. The restoration does not reproduce that training
-run or resolve inconsistencies in the original experiment report about which
-embedding configuration produced each score.
-
-Important limitations include:
-
-- The original split was performed at the read level; separation by source
-  genome or accession was not demonstrated.
-- The current model is a closed-set classifier and cannot establish that an
-  input represents a novel virus.
-- Synthetic-to-real domain shift was not evaluated in this restoration.
-- Softmax outputs are not calibrated clinical probabilities.
-- PCA proximity is a visualization of one learned representation, not a
-  phylogenetic or taxonomic distance.
-
-See [`archive/2022/README.md`](archive/2022/README.md) for the original notebook
-flow and environment constraints.
-
-## Data source
-
-The original project used synthetic training reads published with PACIFIC:
-
-> Acera Mateos, P., Balboa, R. F., Easteal, S., Eyras, E., & Patel, H. R.
-> (2021). PACIFIC: a lightweight deep-learning classifier of SARS-CoV-2 and
-> co-infecting RNA viruses. *Scientific Reports, 11*, 3209.
-> https://doi.org/10.1038/s41598-021-82043-4
-
-The original report and notebooks contain the broader bibliography used in
-2022.
+The application resolves artifact paths relative to the repository, so
+inference does not depend on the shell's working directory. The model and
+reference projection are loaded once per process (`ViralReadPredictor.load_default`).

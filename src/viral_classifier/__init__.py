@@ -1,1 +1,1 @@
-"""Inference tools for the restored viral-read classifier."""
+"""Inference tools for the viral genomic read classifier."""

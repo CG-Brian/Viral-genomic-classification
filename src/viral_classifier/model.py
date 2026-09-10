@@ -1,4 +1,4 @@
-"""Inference-only PyTorch architecture matching the 2022 classifier."""
+"""LSTM classifier over BPE token embeddings."""
 
 import torch
 from torch import nn

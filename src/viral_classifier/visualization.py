@@ -1,4 +1,4 @@
-"""Plotly figures for model output and historical embedding projections."""
+"""Plotly figures for model output and embedding projections."""
 
 from collections.abc import Iterable
 
@@ -41,7 +41,7 @@ def _ordered_unique(values: Iterable[str]) -> tuple[str, ...]:
 
 
 def projection_figure(data: ProjectionData) -> go.Figure:
-    """Render the historical PCA projection with a distinct submitted point."""
+    """Render the PCA projection with a distinct submitted point."""
     label_array = np.asarray(data.labels)
     figure = go.Figure()
     for label in _ordered_unique(data.labels):

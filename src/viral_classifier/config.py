@@ -1,4 +1,4 @@
-"""Repository-relative configuration for the historical model artifacts."""
+"""Repository-relative configuration for the model artifacts."""
 
 from dataclasses import dataclass
 from pathlib import Path

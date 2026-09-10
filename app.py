@@ -1,4 +1,4 @@
-"""Gradio entry point for the restored viral-read classifier demo."""
+"""Gradio entry point for the viral genomic read classifier demo."""
 
 from __future__ import annotations
 
@@ -42,11 +42,11 @@ def run_prediction(raw_sequence: str):
             f"{len(prediction.tokens)} BPE tokens."
         )
     except Exception as exc:  # PCA is optional; preserve a valid classification.
-        LOGGER.exception("Could not build the historical PCA projection", exc_info=exc)
+        LOGGER.exception("Could not build the PCA projection", exc_info=exc)
         pca_plot = None
         status = (
             f"Processed {len(prediction.sequence)} nucleotides. "
-            "Classification succeeded, but the historical PCA projection is unavailable."
+            "Classification succeeded, but the PCA projection is unavailable."
         )
 
     return class_output, confidence_output, token_output, score_plot, pca_plot, status
@@ -62,13 +62,14 @@ PAGE_CSS = """
 with gr.Blocks(title="Viral Read Classifier", analytics_enabled=False) as demo:
     gr.Markdown(
         """
-<div class="project-kicker">2022 project · restored inference demo</div>
+<div class="project-kicker">NLP-style representation learning for genomics</div>
 
 # Viral genomic read classification
 
-Explore a historical BPE–LSTM model trained to assign synthetic respiratory
-RNA-seq reads to one of six classes. Enter a **DNA-formatted read using A/C/G/T**.
-The model accepts 20–1,000 nucleotides; its original training reads were 150 nt.
+Explore a BPE-tokenized, CBOW-pretrained embedding feeding an LSTM classifier
+trained to assign synthetic respiratory RNA-seq reads to one of six classes.
+Enter a **DNA-formatted read using A/C/G/T**. The model accepts 20–1,000
+nucleotides; its training reads were 150 nt.
 """
     )
 
@@ -96,10 +97,10 @@ The model accepts 20–1,000 nucleotides; its original training reads were 150 n
 
 - Scores are six-class model outputs for an individual read, not patient-level
   infection probabilities.
-- PCA proximity visualizes the historical learned representation and does not
-  establish phylogenetic relatedness.
-- The original evaluation used synthetic PACIFIC-derived reads and has not been
-  reproduced during this inference-only restoration.
+- PCA proximity visualizes the learned embedding space and does not establish
+  phylogenetic relatedness.
+- Training and evaluation used synthetic PACIFIC-derived reads; this run has
+  not been reproduced in this repository.
 - **Research demonstration only — not a clinical diagnostic tool.**
 """
     )

@@ -1,4 +1,4 @@
-"""Artifact loading and prediction for the restored viral-read classifier."""
+"""Artifact loading and prediction for the viral genomic read classifier."""
 
 from __future__ import annotations
 
@@ -97,9 +97,9 @@ class ViralReadPredictor:
         with paths.pca.open("rb") as pca_file:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", InconsistentVersionWarning)
-                historical_pca: Any = pickle.load(pca_file)
-        pca_mean = np.asarray(historical_pca.mean_, dtype=np.float32)
-        pca_components = np.asarray(historical_pca.components_, dtype=np.float32)
+                fitted_pca: Any = pickle.load(pca_file)
+        pca_mean = np.asarray(fitted_pca.mean_, dtype=np.float32)
+        pca_components = np.asarray(fitted_pca.components_, dtype=np.float32)
         if pca_mean.shape != (config.embedding_dim,) or pca_components.shape != (
             3,
             config.embedding_dim,

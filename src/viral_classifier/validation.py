@@ -1,4 +1,4 @@
-"""Validation for DNA-formatted reads accepted by the historical model."""
+"""Validation for DNA-formatted reads accepted by the classifier."""
 
 MIN_SEQUENCE_LENGTH = 20
 MAX_SEQUENCE_LENGTH = 1_000
@@ -25,7 +25,7 @@ def normalize_sequence(raw: str) -> str:
     if invalid:
         raise SequenceValidationError(
             f"Unsupported nucleotide symbols: {', '.join(invalid)}. "
-            "This historical model accepts DNA-formatted A/C/G/T reads only."
+            "This model accepts DNA-formatted A/C/G/T reads only."
         )
 
     return sequence
